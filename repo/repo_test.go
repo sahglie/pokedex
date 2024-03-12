@@ -38,13 +38,13 @@ func TestRepo_Pager(t *testing.T) {
 func TestRepo_CachesLocationResults(t *testing.T) {
 	r := NewRepo()
 
-	if len(r.cache) != 0 {
-		t.Errorf("expected %d got %d\v", 0, len(r.cache))
+	if r.cache.NumKeys() != 0 {
+		t.Errorf("expected %d got %d\v", 0, r.cache.NumKeys())
 	}
 
 	r.LocationsNext()
 
-	if len(r.cache) != 1 {
-		t.Errorf("expected %d got %d\v", 1, len(r.cache))
+	if r.cache.NumKeys() != 1 {
+		t.Errorf("expected %d got %d\v", 1, r.cache.NumKeys())
 	}
 }

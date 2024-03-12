@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/sahglie/pokedex/api"
+	"github.com/sahglie/pokedex/cache"
 )
 
 var (
@@ -13,7 +14,7 @@ var (
 
 type Repo struct {
 	client   api.Client
-	cache    map[string][]string
+	cache    pokecache.Cache
 	nextPage int
 	prevPage int
 }
@@ -22,7 +23,7 @@ func NewRepo() Repo {
 	c := api.NewClient(true)
 	return Repo{
 		client:   c,
-		cache:    make(map[string][]string),
+		cache:    pokecache.NewCache(),
 		nextPage: 1,
 		prevPage: -1,
 	}
@@ -51,7 +52,7 @@ func (r *Repo) LocationsPrev() ([]string, error) {
 func (r *Repo) locations(page int) ([]string, error) {
 	key := fmt.Sprintf("locations-%d", page)
 
-	names, ok := r.cache[key]
+	names, ok := r.cache.Get(key)
 
 	if !ok {
 		locations, _ := r.client.GetLocations(page)
@@ -61,7 +62,7 @@ func (r *Repo) locations(page int) ([]string, error) {
 			names[i] = l.Name
 		}
 
-		r.cache[key] = names
+		r.cache.Add(key, names)
 	}
 
 	return names, nil
