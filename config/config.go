@@ -1,29 +1,25 @@
 package config
 
+import (
+	"fmt"
+	"github.com/sahglie/pokedex/repo"
+)
+
 type AppConfig struct {
-	NextPage int
-	PrevPage int
-	Prompt   string
+	Repo      *repo.Repo
+	Prompt    string
+	DebugMode bool
 }
+
+var reset = "\033[0m"
+var green = "\033[32m"
 
 func NewAppConfig() AppConfig {
+	r := repo.NewRepo()
+
 	return AppConfig{
-		NextPage: 1,
-		PrevPage: 0,
-		Prompt:   "Pokedex > ",
+		Repo:      &r,
+		Prompt:    fmt.Sprintf("%sPokedex > %s", green, reset),
+		DebugMode: false,
 	}
-}
-
-func (c *AppConfig) AdvancePager() {
-	c.NextPage++
-	c.PrevPage++
-}
-
-func (c *AppConfig) RewindPager() {
-	if c.PrevPage == 0 {
-		return
-	}
-
-	c.NextPage--
-	c.PrevPage--
 }

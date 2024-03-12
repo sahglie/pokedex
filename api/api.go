@@ -9,18 +9,16 @@ import (
 )
 
 var apiRoot = "https://pokeapi.co"
-var DebugMode = false
 
-type Client struct {
-	baseUrl   string
-	debugMode bool
-}
-
-type JsonResponse struct {
+type jsonData struct {
 	Count   int
 	NextUrl string `json:"next"`
 	PrevUrl string `json:"previous"`
 	Results []Location
+}
+
+type Client interface {
+	GetLocations(int) ([]Location, error)
 }
 
 type Location struct {
@@ -28,37 +26,64 @@ type Location struct {
 	Url  string
 }
 
-func NewClient() Client {
-	return Client{
+type PokemonClient struct {
+	baseUrl   string
+	debugMode bool
+}
+
+func NewClient(debugMode bool) Client {
+	return &PokemonClient{
 		baseUrl:   apiRoot,
-		debugMode: true,
+		debugMode: debugMode,
 	}
 }
 
-func (c *Client) GetLocations(page int) ([]Location, error) {
+func (c *PokemonClient) GetLocations(page int) ([]Location, error) {
 	locations := make([]Location, 0)
 
 	params := buildParams(page)
-	url := getUrl("location", params)
+	locUrl := getUrl("location", params)
 
-	body, err := httpRequest(url)
+	body, err := c.httpRequest(locUrl)
 
 	if err != nil {
 		return locations, err
 	}
 
-	jsonResponse := JsonResponse{}
+	jsonResponse := jsonData{}
 	err = json.Unmarshal(body, &jsonResponse)
 	if err != nil {
 		return locations, err
 	}
 
-	if DebugMode {
-		fmt.Printf("%+v\n", jsonResponse)
-	}
-
 	locations = jsonResponse.Results
 	return locations, nil
+}
+
+func (c *PokemonClient) httpRequest(url string) ([]byte, error) {
+	var body []byte
+
+	if c.debugMode {
+		fmt.Printf("GET: %s\n", url)
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return body, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return body, fmt.Errorf("status code: %d", resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+	body, err = io.ReadAll(resp.Body)
+
+	if err != nil {
+		return body, err
+	}
+
+	return body, nil
 }
 
 func getUrl(endpoint string, params url.Values) string {
@@ -77,30 +102,8 @@ func buildParams(page int) url.Values {
 
 	if page > 1 {
 		params.Add("limit", "20")
-		params.Add("offset", fmt.Sprintf("%d", page*20))
+		params.Add("offset", fmt.Sprintf("%d", (page-1)*20))
 	}
 
 	return params
-}
-
-func httpRequest(url string) ([]byte, error) {
-	var body []byte
-
-	if DebugMode {
-		fmt.Printf("GET: %s\n", url)
-	}
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return body, err
-	}
-
-	defer resp.Body.Close()
-	body, err = io.ReadAll(resp.Body)
-
-	if err != nil {
-		return body, err
-	}
-
-	return body, nil
 }
