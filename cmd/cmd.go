@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/sahglie/pokedex/config"
+	"github.com/sahglie/pokedex/repo"
 )
 
 type Command struct {
@@ -69,7 +71,16 @@ func MapCmd(c *config.AppConfig) error {
 }
 
 func MapbCmd(c *config.AppConfig) error {
-	names, _ := c.Repo.LocationsPrev()
+	names, err := c.Repo.LocationsPrev()
+
+	if errors.Is(err, repo.ErrNoPrevPage) {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
 
 	for _, n := range names {
 		fmt.Println(n)
