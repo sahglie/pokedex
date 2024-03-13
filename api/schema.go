@@ -1,10 +1,10 @@
 package api
 
 type locationsJSON struct {
-	Count   int
-	NextUrl string `json:"next"`
-	PrevUrl string `json:"previous"`
-	Results []Location
+	Count   int `json:"count"`
+	Results []struct {
+		Name string `json:"name"`
+	} `json:"results"`
 }
 
 type areaJSON struct {

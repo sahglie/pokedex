@@ -4,9 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/sahglie/pokedex/api"
-	"github.com/sahglie/pokedex/cache"
-	"strings"
-	"time"
 )
 
 var (
@@ -16,7 +13,6 @@ var (
 
 type Repo struct {
 	client   api.Client
-	cache    pokecache.Cache
 	nextPage int
 	prevPage int
 }
@@ -25,14 +21,17 @@ func NewRepo() Repo {
 	c := api.NewClient(true)
 	return Repo{
 		client:   c,
-		cache:    pokecache.NewCache(5 * time.Minute),
 		nextPage: 1,
 		prevPage: -1,
 	}
 }
 
 func (r *Repo) LocationsNext() ([]string, error) {
-	names, _ := r.locations(r.nextPage)
+	names, err := r.locations(r.nextPage)
+	if err != nil {
+		return names, err
+	}
+
 	r.nextPage++
 	r.prevPage++
 	return names, nil
@@ -43,7 +42,10 @@ func (r *Repo) LocationsPrev() ([]string, error) {
 		return []string{}, ErrNoPrevPage
 	}
 
-	names, _ := r.locations(r.prevPage)
+	names, err := r.locations(r.prevPage)
+	if err != nil {
+		return names, err
+	}
 
 	r.prevPage--
 	r.nextPage--
@@ -52,29 +54,24 @@ func (r *Repo) LocationsPrev() ([]string, error) {
 }
 
 func (r *Repo) ListPokemonInArea(name string) ([]string, error) {
-	key := fmt.Sprintf("area-%s", name)
-
-	data, ok := r.cache.Get(key)
-
-	if !ok {
-		area, _ := r.client.GetArea(name)
-		builder := strings.Builder{}
-		for _, e := range area.PokemonEncounters {
-			builder.WriteString(e.Pokemon.Name)
-			builder.WriteString("\n")
-		}
-
-		s := builder.String()
-		data = []byte(strings.TrimRight(s, "\n"))
-		r.cache.Add(key, data)
+	area, err := r.client.GetArea(name)
+	if err != nil {
+		return []string{}, err
 	}
 
-	names := strings.Split(string(data), "\n")
+	names := make([]string, 0)
+	for _, e := range area.PokemonEncounters {
+		names = append(names, e.Pokemon.Name)
+	}
+
 	return names, nil
 }
 
 func (r *Repo) GetPokemonInfo(name string) (Pokemon, error) {
-	p, _ := r.client.GetPokemon(name)
+	p, err := r.client.GetPokemon(name)
+	if err != nil {
+		return Pokemon{}, err
+	}
 
 	stats := make([]string, 0)
 	for _, s := range p.Stats {
@@ -99,23 +96,15 @@ func (r *Repo) GetPokemonInfo(name string) (Pokemon, error) {
 }
 
 func (r *Repo) locations(page int) ([]string, error) {
-	key := fmt.Sprintf("locations-%d", page)
-
-	data, ok := r.cache.Get(key)
-
-	if !ok {
-		locations, _ := r.client.GetLocations(page)
-		builder := strings.Builder{}
-		for _, l := range locations {
-			builder.WriteString(l.Name)
-			builder.WriteString("\n")
-		}
-
-		data = []byte(builder.String())
-		r.cache.Add(key, data)
+	locations, err := r.client.GetLocations(page)
+	if err != nil {
+		return []string{}, err
 	}
 
-	names := strings.Split(string(data), "\n")
+	names := make([]string, 0)
+	for _, r := range locations.Results {
+		names = append(names, r.Name)
+	}
 
 	return names, nil
 }

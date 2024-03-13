@@ -3,70 +3,57 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	pokecache "github.com/sahglie/pokedex/cache"
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 var apiRoot = "https://pokeapi.co"
 
 type Client interface {
-	GetLocations(int) ([]Location, error)
+	GetLocations(int) (locationsJSON, error)
 	GetArea(string) (areaJSON, error)
 	GetPokemon(string) (pokemonJSON, error)
-	httpRequest(string) ([]byte, error)
-}
-
-type Location struct {
-	Name string
-	Url  string
-}
-
-type Area struct {
-	ID      int
-	Name    string
-	Pokemon []string
+	GET(string, url.Values) ([]byte, error)
 }
 
 type PokemonClient struct {
 	baseUrl   string
 	debugMode bool
+	cache     pokecache.Cache
 }
 
 func NewClient(debugMode bool) Client {
 	return &PokemonClient{
 		baseUrl:   apiRoot,
 		debugMode: debugMode,
+		cache:     pokecache.NewCache(5 * time.Minute),
 	}
 }
 
-func (c *PokemonClient) GetLocations(page int) ([]Location, error) {
-	locations := make([]Location, 0)
+func (c *PokemonClient) GetLocations(page int) (locationsJSON, error) {
+	params := buildPageParams(page)
 
-	params := buildParams(page)
-	locUrl := getUrl("location-area", params)
+	body, err := c.GET("location-area", params)
+	if err != nil {
+		return locationsJSON{}, err
+	}
 
-	body, err := c.httpRequest(locUrl)
-
+	locations := locationsJSON{}
+	err = json.Unmarshal(body, &locations)
 	if err != nil {
 		return locations, err
 	}
 
-	jsonResponse := locationsJSON{}
-	err = json.Unmarshal(body, &jsonResponse)
-	if err != nil {
-		return locations, err
-	}
-
-	locations = jsonResponse.Results
 	return locations, nil
 }
 
 func (c *PokemonClient) GetPokemon(name string) (pokemonJSON, error) {
 	endpoint := fmt.Sprintf("%s/%s", "pokemon", name)
-	locUrl := getUrl(endpoint, url.Values{})
 
-	body, err := c.httpRequest(locUrl)
+	body, err := c.GET(endpoint, url.Values{})
 	if err != nil {
 		return pokemonJSON{}, err
 	}
@@ -82,9 +69,8 @@ func (c *PokemonClient) GetPokemon(name string) (pokemonJSON, error) {
 
 func (c *PokemonClient) GetArea(name string) (areaJSON, error) {
 	endpoint := fmt.Sprintf("%s/%s", "location-area", name)
-	locUrl := getUrl(endpoint, url.Values{})
 
-	body, err := c.httpRequest(locUrl)
+	body, err := c.GET(endpoint, url.Values{})
 	if err != nil {
 		return areaJSON{}, err
 	}
@@ -98,40 +84,45 @@ func (c *PokemonClient) GetArea(name string) (areaJSON, error) {
 	return area, nil
 }
 
-func (c *PokemonClient) httpRequest(url string) ([]byte, error) {
-	var body []byte
+func (c *PokemonClient) GET(endpoint string, params url.Values) ([]byte, error) {
+	eUrl := buildURL(endpoint, params)
+	body, ok := c.cache.Get(eUrl)
 
-	if c.debugMode {
-		fmt.Printf("GET: %s\n", url)
-	}
+	if !ok {
+		if c.debugMode {
+			fmt.Printf("GET: %s\n", eUrl)
+		}
 
-	resp, err := http.Get(url)
-	if err != nil {
-		return body, err
-	}
+		resp, err := http.Get(eUrl)
+		if err != nil {
+			return body, err
+		}
 
-	if resp.StatusCode != http.StatusOK {
-		return body, fmt.Errorf("status code: %d", resp.StatusCode)
-	}
+		defer resp.Body.Close()
 
-	defer resp.Body.Close()
-	body, err = io.ReadAll(resp.Body)
+		body, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return body, err
+		}
 
-	if err != nil {
-		return body, err
+		if resp.StatusCode != http.StatusOK {
+			return body, fmt.Errorf("status code: %d", resp.StatusCode)
+		}
+
+		c.cache.Add(eUrl, body)
 	}
 
 	return body, nil
 }
 
-func getUrl(endpoint string, params url.Values) string {
+func buildURL(endpoint string, params url.Values) string {
 	u, _ := url.ParseRequestURI(apiRoot)
 	u.Path = fmt.Sprintf("/api/v2/%s", endpoint)
 	u.RawQuery = params.Encode()
 	return fmt.Sprintf("%v", u)
 }
 
-func buildParams(page int) url.Values {
+func buildPageParams(page int) url.Values {
 	params := url.Values{}
 
 	if page < 1 {

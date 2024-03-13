@@ -59,7 +59,8 @@ func (c *Cache) Remove(key string) {
 	delete(c.entries, key)
 	c.mu.Unlock()
 }
-func (c *Cache) NumKeys() int {
+
+func (c *Cache) Size() int {
 	return len(c.entries)
 }
 
