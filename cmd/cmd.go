@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/sahglie/pokedex/config"
 	"github.com/sahglie/pokedex/repo"
+	"math/rand"
+	"time"
 )
 
 type Command struct {
@@ -50,9 +52,14 @@ var Commands = map[string]Command{
 		Fn:          CatchPokemon,
 	},
 	"inspect": {
-		Name:        "catch",
+		Name:        "inspect",
 		Description: "Inspect stats for a pokemon you have caught",
 		Fn:          InspectPokemon,
+	},
+	"pokedex": {
+		Name:        "pokedex",
+		Description: "Inspect stats for a pokemon you have caught",
+		Fn:          Pokedex,
 	},
 }
 
@@ -65,6 +72,9 @@ Usage:
   map: Displays the names of 20 location areas
   mapb: Displays the names of the previous 20 location areas
   explore: Displays the names of pokemon in the area 
+  catch: Try and catch a pokemon, if you catch them they will be added to your pokedex
+  inspect: View stats of a pokemon in your pokedex
+  pokedex: View the pokemon in your pokedex
 `
 	fmt.Print(help)
 
@@ -128,14 +138,22 @@ func CatchPokemon(c *config.AppConfig, args ...string) error {
 	name := args[0]
 
 	fmt.Printf("Throwing a Pokeball at %s...\n", name)
-	fmt.Printf("%s was caught!\n", name)
 
 	pokemon, err := c.Repo.GetPokemonInfo(name)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(pokemon.String())
+	// TODO: pass in the pokemon's base experience, currently we are not storing
+	// this attribute
+	if !attemptCatch(45) {
+		fmt.Printf("%s escaped!\n", pokemon.Name)
+		return nil
+	}
+
+	c.Repo.SavePokemon(pokemon)
+	fmt.Printf("%s was caught!\n", name)
+	fmt.Println("You may now inspect it with the inspect command.")
 
 	return nil
 }
@@ -146,15 +164,41 @@ func InspectPokemon(c *config.AppConfig, args ...string) error {
 	}
 
 	name := args[0]
+	p, ok := c.Repo.GetSavedPokemon(name)
 
-	fmt.Printf("Inspecting %s...\n", name)
-
-	pokemon, err := c.Repo.GetPokemonInfo(name)
-	if err != nil {
-		return err
+	if !ok {
+		fmt.Println("you have not cauth that pokemon")
+		return nil
 	}
 
-	fmt.Println(pokemon.String())
+	fmt.Println(p.String())
 
 	return nil
+}
+
+func Pokedex(c *config.AppConfig, args ...string) error {
+	fmt.Println("Your Pokedex:")
+
+	pokemons := c.Repo.ListSavedPokemons()
+
+	if len(pokemons) == 0 {
+		fmt.Println("* pokedex is empty *")
+		return nil
+	}
+
+	for _, p := range pokemons {
+		fmt.Printf("  - %s\n", p.Name)
+	}
+
+	return nil
+}
+
+func attemptCatch(experience int) bool {
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+
+	randVal := r.Float64()
+	probabilityThreshold := 1.0 / (1.0 + float64(experience/10))
+
+	return randVal < probabilityThreshold
 }
