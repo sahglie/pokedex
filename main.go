@@ -18,13 +18,17 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
-		name := strings.Trim(line, " ")
-		command, ok := cmds[name]
+		line = strings.Trim(line, " ")
+		tokens := strings.Split(line, " ")
 
-		if name == "exit" || name == "quit" {
-			command.Fn(&cnf)
-			os.Exit(0)
+		name := tokens[0]
+
+		args := make([]string, 0)
+		if len(tokens) > 1 {
+			args = tokens[1:]
 		}
+
+		command, ok := cmds[name]
 
 		if !ok {
 			fmt.Println("unknown command")
@@ -33,7 +37,14 @@ func main() {
 			continue
 		}
 
-		command.Fn(&cnf)
+		err := command.Fn(&cnf, args...)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if name == "exit" || name == "quit" {
+			os.Exit(0)
+		}
 
 		fmt.Printf("%s", cnf.Prompt)
 	}

@@ -1,0 +1,18 @@
+{
+  "id": 1,
+  "name": "canalave-city-area",
+  "pokemon_encounters": [
+    {
+      "pokemon": {
+        "name": "tentacool",
+        "url": "https://pokeapi.co/api/v2/pokemon/72/"
+      }
+    },
+    {
+      "pokemon": {
+        "name": "tentacruel",
+        "url": "https://pokeapi.co/api/v2/pokemon/73/"
+      }
+    }
+  ]
+}

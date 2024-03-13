@@ -10,20 +10,22 @@ import (
 
 var apiRoot = "https://pokeapi.co"
 
-type jsonData struct {
-	Count   int
-	NextUrl string `json:"next"`
-	PrevUrl string `json:"previous"`
-	Results []Location
-}
-
 type Client interface {
 	GetLocations(int) ([]Location, error)
+	GetArea(string) (areaJSON, error)
+	GetPokemon(string) (pokemonJSON, error)
+	httpRequest(string) ([]byte, error)
 }
 
 type Location struct {
 	Name string
 	Url  string
+}
+
+type Area struct {
+	ID      int
+	Name    string
+	Pokemon []string
 }
 
 type PokemonClient struct {
@@ -42,7 +44,7 @@ func (c *PokemonClient) GetLocations(page int) ([]Location, error) {
 	locations := make([]Location, 0)
 
 	params := buildParams(page)
-	locUrl := getUrl("location", params)
+	locUrl := getUrl("location-area", params)
 
 	body, err := c.httpRequest(locUrl)
 
@@ -50,7 +52,7 @@ func (c *PokemonClient) GetLocations(page int) ([]Location, error) {
 		return locations, err
 	}
 
-	jsonResponse := jsonData{}
+	jsonResponse := locationsJSON{}
 	err = json.Unmarshal(body, &jsonResponse)
 	if err != nil {
 		return locations, err
@@ -58,6 +60,42 @@ func (c *PokemonClient) GetLocations(page int) ([]Location, error) {
 
 	locations = jsonResponse.Results
 	return locations, nil
+}
+
+func (c *PokemonClient) GetPokemon(name string) (pokemonJSON, error) {
+	endpoint := fmt.Sprintf("%s/%s", "pokemon", name)
+	locUrl := getUrl(endpoint, url.Values{})
+
+	body, err := c.httpRequest(locUrl)
+	if err != nil {
+		return pokemonJSON{}, err
+	}
+
+	pokemon := pokemonJSON{}
+	err = json.Unmarshal(body, &pokemon)
+	if err != nil {
+		return pokemon, err
+	}
+
+	return pokemon, nil
+}
+
+func (c *PokemonClient) GetArea(name string) (areaJSON, error) {
+	endpoint := fmt.Sprintf("%s/%s", "location-area", name)
+	locUrl := getUrl(endpoint, url.Values{})
+
+	body, err := c.httpRequest(locUrl)
+	if err != nil {
+		return areaJSON{}, err
+	}
+
+	area := areaJSON{}
+	err = json.Unmarshal(body, &area)
+	if err != nil {
+		return area, err
+	}
+
+	return area, nil
 }
 
 func (c *PokemonClient) httpRequest(url string) ([]byte, error) {

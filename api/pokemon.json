@@ -1,0 +1,32 @@
+{
+  "id": 24,
+  "name": "arbok",
+  "height": 35,
+  "weight": 650,
+  "abilities": [
+    {
+      "ability": {
+        "name": "unnerve",
+        "url": "https://pokeapi.co/api/v2/ability/127/"
+      }
+    }
+  ],
+  "stats": [
+    {
+      "base_stat": 80,
+      "effort": 0,
+      "stat": {
+        "name": "speed",
+        "url": "https://pokeapi.co/api/v2/stat/6/"
+      }
+    }
+  ],
+  "types": [
+    {
+      "type": {
+        "name": "poison",
+        "url": "https://pokeapi.co/api/v2/type/4/"
+      }
+    }
+  ]
+}

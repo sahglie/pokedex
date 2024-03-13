@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/sahglie/pokedex/api"
 	"github.com/sahglie/pokedex/cache"
+	"strings"
+	"time"
 )
 
 var (
@@ -23,7 +25,7 @@ func NewRepo() Repo {
 	c := api.NewClient(true)
 	return Repo{
 		client:   c,
-		cache:    pokecache.NewCache(),
+		cache:    pokecache.NewCache(5 * time.Minute),
 		nextPage: 1,
 		prevPage: -1,
 	}
@@ -49,21 +51,71 @@ func (r *Repo) LocationsPrev() ([]string, error) {
 	return names, nil
 }
 
+func (r *Repo) ListPokemonInArea(name string) ([]string, error) {
+	key := fmt.Sprintf("area-%s", name)
+
+	data, ok := r.cache.Get(key)
+
+	if !ok {
+		area, _ := r.client.GetArea(name)
+		builder := strings.Builder{}
+		for _, e := range area.PokemonEncounters {
+			builder.WriteString(e.Pokemon.Name)
+			builder.WriteString("\n")
+		}
+
+		s := builder.String()
+		data = []byte(strings.TrimRight(s, "\n"))
+		r.cache.Add(key, data)
+	}
+
+	names := strings.Split(string(data), "\n")
+	return names, nil
+}
+
+func (r *Repo) GetPokemonInfo(name string) (Pokemon, error) {
+	p, _ := r.client.GetPokemon(name)
+
+	stats := make([]string, 0)
+	for _, s := range p.Stats {
+		stats = append(stats, fmt.Sprintf("%s - %d", s.Stat.Name, s.BaseStat))
+	}
+
+	types := make([]string, 0)
+	for _, t := range p.Types {
+		types = append(types, t.Type.Name)
+	}
+
+	pokemon := Pokemon{
+		Id:     p.ID,
+		Name:   p.Name,
+		Height: p.Height,
+		Weight: p.Weight,
+		Stats:  stats,
+		Types:  types,
+	}
+
+	return pokemon, nil
+}
+
 func (r *Repo) locations(page int) ([]string, error) {
 	key := fmt.Sprintf("locations-%d", page)
 
-	names, ok := r.cache.Get(key)
+	data, ok := r.cache.Get(key)
 
 	if !ok {
 		locations, _ := r.client.GetLocations(page)
-
-		names = make([]string, len(locations))
-		for i, l := range locations {
-			names[i] = l.Name
+		builder := strings.Builder{}
+		for _, l := range locations {
+			builder.WriteString(l.Name)
+			builder.WriteString("\n")
 		}
 
-		r.cache.Add(key, names)
+		data = []byte(builder.String())
+		r.cache.Add(key, data)
 	}
+
+	names := strings.Split(string(data), "\n")
 
 	return names, nil
 }
