@@ -144,9 +144,7 @@ func CatchPokemon(c *config.AppConfig, args ...string) error {
 		return err
 	}
 
-	// TODO: pass in the pokemon's base experience, currently we are not storing
-	// this attribute
-	if !attemptCatch(45) {
+	if !attemptCatch(pokemon.BaseExperience) {
 		fmt.Printf("%s escaped!\n", pokemon.Name)
 		return nil
 	}

@@ -2,6 +2,7 @@
   "id": 24,
   "name": "arbok",
   "height": 35,
+  "base_experience": 22,
   "weight": 650,
   "abilities": [
     {

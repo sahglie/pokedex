@@ -84,6 +84,10 @@ func TestGetPokemon(t *testing.T) {
 		t.Errorf("want %d got %d\n", 9, pokemon.Height)
 	}
 
+	if pokemon.BaseExperience != 67 {
+		t.Errorf("want %d got %d\n", 67, pokemon.BaseExperience)
+	}
+
 	stats := pokemon.Stats
 	if len(stats) != 6 {
 		t.Errorf("want %d got %d\n", 6, len(stats))
@@ -167,6 +171,10 @@ func TestMarshal_pokemonJSON(t *testing.T) {
 
 	if pokemon.Weight != 650 {
 		t.Errorf("want %d got %d\n", 650, pokemon.Weight)
+	}
+
+	if pokemon.BaseExperience != 22 {
+		t.Errorf("want %d got %d\n", 22, pokemon.BaseExperience)
 	}
 
 	types := make([]string, 0)

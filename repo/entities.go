@@ -6,12 +6,13 @@ import (
 )
 
 type Pokemon struct {
-	Id     int
-	Name   string
-	Height int
-	Weight int
-	Stats  []string
-	Types  []string
+	Id             int
+	Name           string
+	Height         int
+	Weight         int
+	BaseExperience int
+	Stats          []string
+	Types          []string
 }
 
 func (p *Pokemon) String() string {
